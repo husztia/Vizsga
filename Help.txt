@@ -1,0 +1,742 @@
+Front:
+
+Index js:
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import { App } from './App';
+import 'bootstrap/dist/css/bootstrap.css';
+import "bootstrap-icons/font/bootstrap-icons.css";
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  //<React.StrictMode>
+    <App />
+  //</React.StrictMode>
+);
+
+APP js
+
+import { BrowserRouter as Router, NavLink, Routes, Route } from "react-router-dom";
+import { ChessListPage } from "./ChessListPage";
+import { ChessSinglePage } from "./ChessSinglePage";
+import { ChessCreatePage } from "./ChessCreatePage";
+import { ChessModPage } from "./ChessModPage";
+import { ChessDelPage } from "./ChessDelPage";
+import './App.css';
+
+export const App=()=> {
+  return (
+    <Router>
+      <nav className="navbar navbar-expand-sm navbar-dark bg-dark">
+        <div className="collapse navbar-collapse" id="navbarNav">
+          <ul className="navbar-nav">
+            <li className="nav-item">
+              <NavLink to={'/'} className={({isActive}) => "nav-link" + (isActive ? "active" : "")}>
+                <span className="nav-link">Sakkozók</span>
+              </NavLink>
+              </li>
+              <li className="nav-item">
+              <NavLink to={'/new-chess'} className={({isActive}) => "nav-link" + (isActive ? "active" : "")}>
+                <span className="nav-link">Új sakkozó</span>
+              </NavLink>
+              </li>
+          </ul>
+        </div>
+      </nav>
+      <Routes>
+        <Route path="/" exact element={<ChessListPage />} />
+        <Route path="/chess/:chessId" exact element={<ChessSinglePage />} />
+        <Route path="/new-chess" exact element={<ChessCreatePage />} />
+        <Route path="/mod-chess/:chessId" exact element={<ChessModPage />} />
+        <Route path="/del-chess/:chessId" exact element={<ChessDelPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+POST:
+
+import { useNavigate } from "react-router-dom";
+
+export const ChessCreatePage=()=>{
+    const navigate = useNavigate();
+    return (
+        <div className="p-5 content bg-whitesmoke text-center">
+            <h2>Új sakkozó</h2>
+            <form
+            onSubmit={(event) => {
+            event.persist();
+            event.preventDefault();
+            fetch(`http://chess.sulla.hu/chess`, {
+                method: "POST",
+                //bekerült ez az "újítás", ami miatt nem ment:
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // itt figyeljetek, mert BAL oldalra kell amit a backend-be írunk,
+                //míg jobb oldalra az űrlap-elemek pontos nevei kerültek, kicsivel!!!
+
+                body: JSON.stringify({
+                    name: event.target.elements.name.value,
+                    birth_date: event.target.elements.birth_date.value,
+                    world_ch_won: event.target.elements.world_ch_won.value,
+                    profile_url: event.target.elements.profile_url.value,
+                    image_url: event.target.elements.image_url.value,
+                }),
+            })
+            // ha kész, visszadob a főoldalra! Return-öl a backend-ről minden infót!
+            .then(() =>
+            {
+                navigate("/");
+            })
+            .catch(console.log);
+            }}>
+            <div className="form-group row pb-3">
+                <label className="col-sm-3 col-form-label">Sakkozó neve:</label>
+                <div className="col-sm-9">
+                <input type="text" name="name" className="form-control" />
+                </div>
+            </div>
+            <div className="form-group row pb-3">
+                <label className="col-sm-3 col-form-label">Születési éve:</label>
+                <div className="col-sm-9">
+                <input type="number" name="birth_date" className="form-control" />
+                </div>
+            </div>
+            <div className="form-group row pb-3">
+                <label className="col-sm-3 col-form-label">Nyert világbajnokságai:</label>
+                <div className="col-sm-9">
+                <input type="number" name="world_ch_won" className="form-control" />
+                </div>
+            </div>
+            <div className="form-group row pb-3">
+                <label className="col-sm-3 col-form-label">Profil URL-je:</label>
+                <div className="col-sm-9">
+                <input type="text" name="profile_url" className="form-control" />
+                </div>
+            </div>
+            <div className="form-group row pb-3">
+                <label className="col-sm-3 col-form-label">Kép URL-je:</label>
+                <div className="col-sm-9">
+                <input type="text" name="image_url" className="form-control" />
+                </div>
+            </div>
+            <button type="submit" className="btn btn-success">
+                Küldés
+            </button>
+            </form>
+        </div>
+    );
+};
+
+DELETE:
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, NavLink } from 'react-router-dom';
+
+export const ChessDelPage=()=> {
+    const params = useParams();
+    const id = params.chessId;
+    const navigate = useNavigate();
+    const[chess,setChess] = useState([]);
+    const[isPending, setPending] = useState(false);
+    useEffect(() => {
+        setPending(true);
+        (async () => {
+            try {
+        const res= await fetch(`https://chess.sulla.hu/chess/${id}`)
+            const chess = await res.json();
+            setChess(chess);
+        }
+        catch(error) {
+            console.log(error);
+        }
+        finally {
+            setPending(false);
+        }
+    })
+    ();
+ }, [id]);
+ return (
+    <div className="p-5 m-auto text-center content bg-lavender">
+        {isPending || !chess.id ? (
+            <div className="spinner-border"></div>
+        ) : (
+                        <div className="card p-3">
+                            <div className="card-body">
+                            <h5 className="card-title">Törlendő elem: {chess.name}</h5>
+                            <div className="lead">Születési éve: {chess.birth_date}</div>
+                            <div className="lead">Nyert világbajnokságok: {chess.world_ch_won}</div>
+                            <div className="lead">Profil: {chess.profile_url}</div>
+                                <img alt={chess.name}
+                                className="img-fluid rounded"
+                                style={{maxHeight: "500px"}}
+                                src={chess.image_url ? chess.image_url : 
+                                "https://via.placeholder.com/400x800"} 
+                                />
+                              </div>
+                              <form onSubmit={(event) => {
+            event.persist();
+            event.preventDefault();
+            fetch(`https://chess.sulla.hu/chess/${id}`, {
+                method: "DELETE",
+            })
+            .then(() =>
+            {
+                navigate("/");
+            })
+            .catch(console.log);
+            }}>
+                              <div>
+<NavLink to={"/"}><button className="bi bi-backspace">&nbsp;Mégsem</button></NavLink>
+&nbsp;&nbsp;
+<button className="bi bi-trash3">&nbsp;Törlés</button></div></form>   
+                        </div>
+                    
+                )}
+            </div>
+        );
+};
+
+GET:
+import React, { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
+
+export const ChessListPage=()=> {
+
+    const[chesses,setChess] = useState([]);
+    const[isFetchPending, setFetchPending] = useState(false);
+    
+    useEffect(() => {
+        setFetchPending(true);
+        fetch("https://chess.sulla.hu/chess")
+            .then((res) => res.json())
+            .then((sakkok) => setChess(sakkok))
+            .catch(console.log)
+            .finally(() => {
+                setFetchPending(false);
+            });
+    }, []);
+    return (
+        <div className="p-5 m-auto text-center content bg-ivory">
+            {isFetchPending ? (
+                <div className="spinner-border"></div>
+            ) : (
+                <div>
+                    <h2>Sakkozók</h2>
+                    {chesses.map((chess, index) => (
+
+                        <div className="card col-sm-3 d-inline-block m-1 p-2" key={index}>
+                            <p className="text-dark">Sakkozó neve: {chess.name}</p>
+                            <p className="text-danger">Születési éve: {chess.birth_date}</p>
+                            <p className="text-danger">Nyert világbajnokságai: {chess.world_ch_won}</p>
+                            <div className="card-body">
+{/* Feltételes NavLink az abszolút URL-hez */}
+{chess.profile_url.startsWith('http') ? (
+                                    <a href={chess.profile_url} target="_blank" rel="noopener noreferrer">
+                                        Profile link
+                                    </a>
+                                ) : (
+                                    <NavLink to={chess.profile_url} exact>
+                                        Profile link
+                                    </NavLink>
+                                )}
+                                <br />
+                                <NavLink key={chess.id} to={"/chess/" + chess.id}>
+                                    <img alt={chess.nev}
+                                        className="img-fluid"
+                                        style={{ maxHeight: 200 }}
+                                        src={chess.image_url ? chess.image_url :
+                                            "https://via.placeholder.com/400x800"} /></NavLink>
+                                <br />
+                                <NavLink key="x" to={"/mod-chess/" + chess.id}>
+                                    <i className="bi bi-pencil"></i></NavLink> &nbsp;&nbsp;
+                                    <NavLink key="y" to={"/del-chess/" + chess.id}><i className="bi bi-trash3"></i></NavLink>
+                            </div>
+                        </div>
+
+
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+PUT:
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+export const ChessModPage =()=> {
+    const params = useParams();
+    const id = params.chessId;
+    const navigate = useNavigate();
+    const [chess, setChess] = useState({
+        name: '',
+        birth_date: '',
+        world_ch_won: 0,
+        profile_url: '',
+        image_url: ''
+    });
+    useEffect(() => {
+        const fetchChessData = async () => {
+            try {
+                const response = await axios.get(`https://chess.sulla.hu/chess/${id}`);
+                setChess(response.data);
+            } catch (error) {
+                console.log('Error fetching chess data:', error);
+            }
+        };
+
+        fetchChessData();
+    }, [id]);
+
+    const handleInputChange = event => {
+        const { name, value } = event.target;
+        setChess(prevState => ({
+            ...prevState,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = event => {
+        event.preventDefault();
+        axios.put(`https://chess.sulla.hu/chess/${id}`, chess)
+        .then(() => {
+            navigate("/");
+        })
+        .catch(error => {
+            console.log('Error updating chess data:', error);
+        });
+};
+
+    return (
+        <div className="p-5 content bg-whitesmoke text-center">
+            <h2>Egy sakkozó módosítása</h2>
+            <form onSubmit={handleSubmit}>
+                
+                <div className="form-group row pb-3">
+                    <label className="col-sm-3 col-form-label">Sakkozó név:</label>
+                    <div className="col-sm-9">
+                        <input type="text" name="name" className="form-control" defaultValue={chess.name} onChange={handleInputChange}/>
+                    </div>
+                </div>
+                <div className="form-group row pb-3">
+                    <label className="col-sm-3 col-form-label">Születési dátum:</label>
+                    <div className="col-sm-9">
+                        <input type="date" name="birth_date" className="form-control" defaultValue={chess.birth_date} onChange={handleInputChange}/>
+                    </div>
+                </div>
+                <div className="form-group row pb-3">
+                    <label className="col-sm-3 col-form-label">Nyert világbajnokságok:</label>
+                    <div className="col-sm-9">
+                        <input type="number" name="world_ch_won" className="form-control" value={chess.world_ch_won.toString()} onChange={handleInputChange}/>
+                    </div>
+                </div>
+                <div className="form-group row pb-3">
+                    <label className="col-sm-3 col-form-label">Profil URL-je:</label>
+                    <div className="col-sm-9">
+                        <input type="text" name="profile_url" className="form-control" defaultValue={chess.profile_url} onChange={handleInputChange}/>
+                    </div>
+                </div>
+                <div className="form-group row pb-3">
+                    <label className="col-sm-3 col-form-label">Kép URL-je:</label>
+                    <div className="col-sm-9">
+                        <input type="text" name="image_url" className="form-control" defaultValue={chess.image_url} onChange={handleInputChange}/>
+                    <img src={chess.image_url} height="200px" alt={chess.name}/>
+                    </div>
+                </div>
+                <button type="submit" className="btn btn-success">Küldés</button>
+            </form>
+        </div>
+    );
+};
+
+EGY adat:
+
+import React, { useState, useEffect } from 'react';
+import { useParams, NavLink } from 'react-router-dom';
+
+export const ChessSinglePage =()=> {
+
+    const params = useParams();
+    const id = params.chessId;
+    const[chess,setChess] = useState([]);
+    const[isPending, setPending] = useState(false);
+    useEffect(() => {
+        setPending(true);
+        (async () => {
+            try {
+        const res= await fetch(`https://chess.sulla.hu/chess/${id}`)
+            const chess = await res.json();
+            setChess(chess);
+        }
+        catch(error) {
+            console.log(error);
+        }
+        finally {
+            setPending(false);
+        }
+    })
+    ();
+ }, [id]);
+
+    return (
+        <div className="p-5 m-auto text-center content bg-lavender">
+            {isPending || !chess.id ? (
+                <div className="spinner-border"></div>
+            ) : (
+                            <div className="card p-3">
+                                <div className="card-body">
+                                <h5 className="card-title">Sakkozó neve: {chess.name}</h5>
+                                <div className="lead">Születési éve: {chess.birth_date}</div>
+                                <div className="lead">Nyert világbajnokságai: {chess.world_ch_won}</div>
+                                {/* Feltételes NavLink az abszolút URL-hez */}
+{chess.profile_url.startsWith('http') ? (
+                                    <a href={chess.profile_url} target="_blank" rel="noopener noreferrer">
+                                        Profile link
+                                    </a>
+                                ) : (
+                                    <NavLink to={chess.profile_url} exact>
+                                        Profile link
+                                    </NavLink>
+                                )}
+                                <br />
+                                <NavLink key={chess.id} to={"/chess/" + chess.id}>
+                                    <img alt={chess.nev}
+                                        className="img-fluid"
+                                        style={{ maxHeight: 200 }}
+                                        src={chess.image_url ? chess.image_url :
+                                            "https://via.placeholder.com/400x800"} /></NavLink>
+                                <br />
+                                  </div>
+                                  <div><NavLink to="/"><i className="bi bi-backspace"></i></NavLink> &nbsp;&nbsp;&nbsp;
+<NavLink key="y" to={"/mod-chess/" + chess.id}><i className="bi bi-pencil"></i></NavLink></div>   
+                            </div>
+                        
+                    )}
+                </div>
+            );
+}
+
+Back:
+
+Asztali:
+
+CLI:
+
+Class minta 1:
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace celloveszetCLI
+{
+    internal class cellovok
+    {
+        public string nev { get;private  set; }
+
+        public int elsoloves { get;private set; }
+        public int masodikloves { get;private set; }
+        public int harmadikloves { get;private set; }
+        public int negyedikloves { get;private set; }
+
+
+        public cellovok(string sor)
+        {
+            string[] darabok = sor.Split(';');
+
+            this.nev = darabok[0];
+            this.elsoloves = Convert.ToInt32(darabok[1]);
+            this.masodikloves = Convert.ToInt32(darabok[2]);
+            this.harmadikloves = Convert.ToInt32(darabok[3]);
+            this.negyedikloves = Convert.ToInt32(darabok[4]);
+        }
+
+        public override string ToString()
+        {
+            return $"{nev};{elsoloves};{masodikloves};{harmadikloves};{negyedikloves}";
+        }
+    }
+}
+
+Program cs:
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace celloveszetCLI
+{
+    public class Program
+    {
+        static List<cellovok> cellovolist = new List<cellovok>();
+        static void Main(string[] args)
+        {
+            //beolvassa a fájlt
+            StreamReader sr = new StreamReader("lovesek.csv");
+            while (!sr.EndOfStream)
+            {
+                cellovolist.Add(new cellovok(sr.ReadLine()));
+            }
+            sr.Close();
+            List<int> atlag = new List<int>();
+            List<int> nagyertek = new List<int>();
+            //Kiír mindenkit a függvény használatával,átlag listához ad,nagylistához ad
+            for (int i = 0; i < cellovolist.Count; i++)
+            {
+                Console.WriteLine(cellovolist[i].nev + " " + legnagyobbErtek(cellovolist[i].elsoloves, cellovolist[i].masodikloves, cellovolist[i].harmadikloves, cellovolist[i].negyedikloves));
+                int atlagErtek = 0;
+                atlagErtek = (cellovolist[i].elsoloves + cellovolist[i].masodikloves + cellovolist[i].harmadikloves + cellovolist[i].negyedikloves) / 4;
+                atlag.Add(atlagErtek);
+                int[] nagyszam = { cellovolist[i].elsoloves, cellovolist[i].masodikloves, cellovolist[i].harmadikloves, cellovolist[i].negyedikloves };
+                nagyertek.Add(nagyszam.Max());
+
+
+            }
+            //Legnagyobb értéket kiír
+            int indexnagy = 0;
+            int alap = nagyertek[0];
+            for (int i = 0;i <nagyertek.Count;i++)
+            {
+                if (nagyertek[i] > alap)
+                {
+                    indexnagy = i;
+                    
+                }
+
+            }
+            Console.WriteLine(cellovolist[indexnagy].nev+" "+ cellovolist[indexnagy].elsoloves+" "+ cellovolist[indexnagy].masodikloves+" "+ cellovolist[indexnagy].harmadikloves+ " "+cellovolist[indexnagy].negyedikloves);
+
+            //Legkisebb átlag kiír
+            int indexatlag = 0;
+            int alap2 = atlag[0];
+            for (int i = 0; i < atlag.Count; i++)
+            {
+                if (atlag[i] < atlag[indexatlag])
+                {
+                    indexatlag = i;
+
+                }
+
+            }
+            Console.WriteLine(cellovolist[indexatlag].nev + " " + atlag[indexatlag]);
+
+            Console.ReadKey();
+
+        }
+
+        //Legnagyobb függvény
+        public static int legnagyobbErtek(int elso, int masodik, int harmadik, int negyedik)
+        {
+            int[] legnagyobb = { elso, masodik, harmadik, negyedik };
+            return legnagyobb.Max();
+        }
+    }
+}
+
+
+CLI test:
+
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using celloveszetCLI;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace celloveszetCLI.Tests
+{
+    [TestClass()]
+    public class ProgramTests
+    {
+        [TestMethod()]
+        [DataRow(22,29,12,23,29)]
+        [DataRow(16, 45, 87, 33, 87)]
+        [DataRow(96, 49, 67, 45, 96)]
+        [DataRow(44, 3, 12, 77, 77)]
+        public void legnagyobbErtekTest(int a,int b,int c,int d,int expected)
+        {
+            Assert.AreEqual(expected,Program.legnagyobbErtek(a,b,c,d));
+        }
+    }
+}
+
+
+WPF:
+
+Importált class:
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace celloveszetCLI
+{
+    internal class cellovok
+    {
+        public string nev { get;  set; }
+
+        public int elsoloves { get; set; }
+        public int masodikloves { get; set; }
+        public int harmadikloves { get; set; }
+        public int negyedikloves { get;set; }
+
+        /*
+        public cellovok(string sor)
+        {
+            string[] darabok = sor.Split(';');
+
+            this.nev = darabok[0];
+            this.elsoloves = Convert.ToInt32(darabok[1]);
+            this.masodikloves = Convert.ToInt32(darabok[2]);
+            this.harmadikloves = Convert.ToInt32(darabok[3]);
+            this.negyedikloves = Convert.ToInt32(darabok[4]);
+        }
+        */
+        public override string ToString()
+        {
+            return $"{nev};{elsoloves};{masodikloves};{harmadikloves};{negyedikloves}";
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.IO;
+using System.Diagnostics;
+using celloveszetCLI;
+using System.Collections;
+
+namespace celloveszetWPF
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    /// 
+
+    public partial class MainWindow : Window
+    {
+        private List<cellovok> celLovok;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            celLovok = new List<cellovok>();
+            LoadData();
+        }
+
+        private void LoadData()
+        {
+            try
+            {
+                string[] lines = File.ReadAllLines("lovesek.csv");
+                foreach (var line in lines.Skip(1))  // Skip the header row
+                {
+                    var values = line.Split(';');
+                    if (values.Length == 6)  // Nev, Lovo1, Lovo2, Lovo3, Lovo4
+                    {
+                        celLovok.Add(new cellovok
+                        {
+                            nev = values[0],
+                            elsoloves = int.Parse(values[1]),
+                            masodikloves = int.Parse(values[2]),
+                            harmadikloves = int.Parse(values[3]),
+                            negyedikloves = int.Parse(values[4])
+                        });
+                    }
+                }
+                dataGrid.ItemsSource = celLovok;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Hiba történt: {ex.Message}");
+            }
+
+        }
+        private void AddButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string nev = nameTextBox.Text;
+                int score1 = int.Parse(score1TextBox.Text);
+                int score2 = int.Parse(score2TextBox.Text);
+                int score3 = int.Parse(score3TextBox.Text);
+                int score4 = int.Parse(score4TextBox.Text);
+
+                // Ellenőrzés, hogy a pontok 0 és 99 között vannak-e
+                if (score1 >= 0 && score1 <= 99 && score2 >= 0 && score2 <= 99 &&
+                    score3 >= 0 && score3 <= 99 && score4 >= 0 && score4 <= 99)
+                {
+                    cellovok newCelLovo = new cellovok
+                    {
+                        nev = nev,
+                        elsoloves = score1,
+                        masodikloves = score2,
+                        harmadikloves = score3,
+                        negyedikloves = score4
+                    };
+                    celLovok.Add(newCelLovo);
+                    dataGrid.ItemsSource = null;  // Reset the DataGrid
+                    dataGrid.ItemsSource = celLovok;  // Update the DataGrid with new data
+                    errorLabel.Content = "";
+                }
+                else
+                {
+                    errorLabel.Content = "Nem megfelelő értékek!";
+                }
+            }
+            catch (Exception)
+            {
+                errorLabel.Content = "Hibás adatbevitel!";
+            }
+        }
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                using (StreamWriter writer = new StreamWriter("lovesek2.csv"))
+                {
+                    writer.WriteLine("Nev;Lovo1;Lovo2;Lovo3;Lovo4");
+                    foreach (var celLovo in celLovok)
+                    {
+                        writer.WriteLine($"{celLovo.nev};{celLovo.elsoloves};{celLovo.masodikloves};{celLovo.harmadikloves};{celLovo.negyedikloves}");
+                    }
+                }
+                MessageBox.Show("A mentés sikeresen megtörtént!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Hiba történt a mentés során: {ex.Message}");
+            }
+        }
+
+
+    }
+}
