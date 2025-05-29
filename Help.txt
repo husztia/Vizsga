@@ -1,19 +1,407 @@
 Front:
 
-Index js:
+REACT parancsok
+If you have npx and Node.js installed, you can create a React application by using create-react-app.
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import { App } from './App';
-import 'bootstrap/dist/css/bootstrap.css';
-import "bootstrap-icons/font/bootstrap-icons.css";
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  //<React.StrictMode>
-    <App />
-  //</React.StrictMode>
-);
+create-react-app név
+cd név
+npm start
+
+Saját:
+
+import React, { useState, useEffect } from 'react';
+
+function Users() {
+  const url = 'http://localhost:5297/User';
+  const token = localStorage.getItem('authToken');
+  const jog = Number(localStorage.getItem('authJog'));
+
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]); // Szűrt felhasználók
+  const [searchTerm, setSearchTerm] = useState(''); // Keresési szöveg
+  const [formData, setFormData] = useState({
+    name: '',
+    felhasznaloNev: '',
+    salt: '',
+    hash: '',
+    email: '',
+    sex: '',
+    role: 2,
+    profilePic: null // Új mező a képfeltöltéshez
+  });
+  const [editingId, setEditingId] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    // Szűrés a keresési szöveg alapján
+    if (searchTerm) {
+      setFilteredUsers(users.filter(user => 
+        user.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ));
+    } else {
+      setFilteredUsers(users); // Ha nincs keresési szöveg, az összes felhasználót megjelenítjük
+    }
+  }, [searchTerm, users]);
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        console.error("Hiba a felhasználók lekérésekor");
+        return;
+      }
+
+      const data = await res.json();
+      setUsers(data.result);
+    } catch (err) {
+      console.error("Hálózati hiba:", err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Biztosan törölni szeretnéd ezt a felhasználót?")) return;
+
+    try {
+      const res = await fetch(`${url}?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (err) {
+      console.error("Törlési hiba:", err);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.felhasznaloNev || !formData.email || !formData.sex) {
+      alert("Kérem, töltse ki az összes kötelező mezőt!");
+      return;
+    }
+
+    const method = editingId ? 'PUT' : 'POST';
+    const endpoint = editingId 
+      ? `http://localhost:5297/User/updateUser?id=${editingId}` 
+      : url;
+
+    const form = new FormData();
+    form.append("Name", formData.name);
+    form.append("FelhasznaloNev", formData.felhasznaloNev);
+    form.append("Hash", formData.hash);
+    form.append("Email", formData.email);
+    form.append("Sex", formData.sex);
+    form.append("Role", formData.role);
+    form.append("Joined", new Date().toISOString());
+
+    if (formData.profilePic) {
+      form.append("Kep", formData.profilePic);
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: form
+      });
+
+      if (!res.ok) {
+        console.error('Hiba a mentés közben:', res.statusText);
+        return;
+      }
+
+      await fetchData();
+      setFormData({
+        name: '',
+        felhasznaloNev: '',
+        salt: '',
+        hash: '',
+        email: '',
+        sex: '',
+        role: 2,
+        profilePic: null
+      });
+      setEditingId(null);
+    } catch (error) {
+      console.error('Hálózati hiba:', error);
+    }
+  };
+
+  const handleEdit = (user) => {
+    setFormData({
+      name: user.name,
+      felhasznaloNev: user.felhasznaloNev,
+      salt: user.salt,
+      hash: user.hash,
+      email: user.email,
+      sex: user.sex,
+      role: user.role,
+      profilePic: null
+    });
+    setEditingId(user.id);
+  };
+
+  return (
+    <div className="p-6">
+      {jog === 1 && (
+        <div className="mt-8 bg-gray-700 p-4 rounded-lg">
+          <h2 className="text-white font-bold text-lg mb-2">{editingId ? 'Felhasználó szerkesztése' : 'Új felhasználó hozzáadása'}</h2>
+          <input
+            className="w-full mb-2 p-2 rounded"
+            placeholder="Név"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <input
+            className="w-full mb-2 p-2 rounded"
+            placeholder="Felhasználónév"
+            value={formData.felhasznaloNev}
+            onChange={(e) => setFormData({ ...formData, felhasznaloNev: e.target.value })}
+          />
+          <input
+            className="w-full mb-2 p-2 rounded"
+            placeholder="Email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+          <input
+            className="w-full mb-2 p-2 rounded"
+            placeholder="Jelszó"
+            value={formData.hash}
+            onChange={(e) => setFormData({ ...formData, hash: e.target.value })}
+          />
+          <select
+            className="w-full mb-2 p-2 rounded"
+            value={formData.sex}
+            onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
+          >
+            <option value="">Nem kiválasztása</option>
+            <option value="Male">Férfi</option>
+            <option value="Female">Nő</option>
+          </select>
+          <select
+            className="w-full mb-2 p-2 rounded"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: Number(e.target.value) })}
+          >
+            <option value={2}>Normál felhasználó</option>
+            <option value={1}>Admin</option>
+          </select>
+
+          <input
+            type="file"
+            className="w-full mb-2 p-2 rounded"
+            onChange={(e) => setFormData({ ...formData, profilePic: e.target.files[0] })}
+          />
+
+          <div className="mt-3">
+            <button className="bg-green-600 px-4 py-2 rounded text-white" onClick={handleSubmit}>
+              Mentés
+            </button>
+            <br />
+            <br />
+            {editingId && (
+              <button
+                className="bg-gray-500 px-4 py-2 rounded text-white"
+                onClick={() => {
+                  setEditingId(null);
+                  setFormData({
+                    name: '',
+                    felhasznaloNev: '',
+                    salt: '',
+                    hash: '',
+                    email: '',
+                    sex: '',
+                    role: 2,
+                    profilePic: null
+                  });
+                }}
+              >
+                Mégse
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      <br />
+      {/* Kereső sáv */}
+      <div className="mb-4">
+        <input
+          type="text"
+          className="w-full p-2 rounded"
+          placeholder="Keresés név alapján"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        {filteredUsers.map((user) => (
+          <div key={user.id} className="max-w-sm rounded-lg overflow-hidden shadow-lg bg-gray-800 text-white p-4">
+            <div className="relative">
+              {user.profilKép && (
+                <img
+                  src={user.profilKép}
+                  alt={user.name}
+                  className="w-full h-56 object-cover rounded-t-lg"
+                />
+              )}
+            </div>
+            <h2 className="text-xl font-bold">{user.name}</h2>
+            <p className="text-gray-400 text-sm">Felhasználónév: {user.felhasznaloNev}</p>
+            <p className="text-gray-400 text-sm">Email: {user.email}</p>
+            <p className="text-gray-400 text-sm">Nem: {user.sex}</p>
+            <p className="text-gray-400 text-sm">Csatlakozott: {new Date(user.joined).toLocaleDateString()}</p>
+            <p className="text-gray-400 text-sm">Szerep: {user.role === 1 ? 'Admin' : 'Normál felhasználó'}</p>
+            {user.profilePic && (
+              <img
+                src={`http://localhost:5297/Images/${user.profilePic}`}
+                alt="Profile"
+                className="w-16 h-16 rounded-full object-cover mb-2"
+              />
+            )}
+            {jog === 1 && (
+              <div className="mt-2 flex gap-2">
+                <button className="bg-blue-600 px-3 py-1 rounded" onClick={() => handleEdit(user)}>Szerkesztés</button>
+                <button className="bg-red-600 px-3 py-1 rounded" onClick={() => handleDelete(user.id)}>Törlés</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default Users;
+
+POST:
+/*Film hozzáadása */
+const handleAddMovie = async () => {
+  const formData = new FormData();
+  formData.append("Name", newMovieData.name);
+  formData.append("Director", newMovieData.director);
+  formData.append("Genre", newMovieData.genre);
+  formData.append("ReleaseYear", newMovieData.releaseYear);
+  formData.append("Length", newMovieData.length.toString());
+  formData.append("Summary", newMovieData.summary);
+  formData.append("AgeCertificates", newMovieData.ageCertificates.toString());
+  //formData.append("Reviews", newMovieData.reviews.toString());
+
+  // Ha van kép (pl. fájl feltöltő inputból)
+  if (newMovieData.kep) {
+    formData.append("Kep", newMovieData.kep);
+  } else {
+    formData.append("Kep", new Blob([])); // Üres fájl, ha kötelező
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      console.error("Hiba a film hozzáadásakor");
+      return;
+    }
+
+    const addedMovie = await response.json();
+    setMovieData((prev) => [...prev, addedMovie.result ?? addedMovie]);
+    setIsAddingMovie(false);
+
+    setNewMovieData({
+      name: "",
+      director: "",
+      genre: "",
+      releaseYear: "",
+      length: 0,
+      //reviews: 0,
+      ageCertificates: 0,
+      summary: "",
+      kep: null,
+    });
+
+PUT:
+ // ** Szerkesztett film mentése **
+  const handleSaveEdit = async () => {
+    try {
+      const payload = new FormData();
+      payload.append("Name", formData.Name);
+      payload.append("Summary", formData.Summary);
+      payload.append("Genre", formData.Genre);
+      payload.append("ReleaseYear", formData.ReleaseYear);
+      payload.append("Length", formData.Length);
+      payload.append("Director", formData.Director); // UUID!
+      payload.append("AgeCertificates", formData.AgeCertificates);
+     // payload.append("Reviews", formData.Reviews);
+  
+      // Csak akkor adjuk hozzá a képet, ha van új választva
+      if (formData.Kep) {
+        payload.append("Kep", formData.Kep);
+      } else {
+        payload.append("Kep", ""); // Swagger szerint üresen is lehet küldeni
+      }
+  
+      const response = await fetch(`${url}?id=${editingMovie.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // NE adjunk meg content-type-ot!
+        },
+        body: payload,
+      });
+  
+      if (!response.ok) {
+        console.error("Sikertelen szerkesztés:", await response.text());
+        return;
+      }
+  
+      const updatedMovie = await response.json();
+  
+      setMovieData((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === editingMovie.id ? updatedMovie : movie
+        )
+      );
+  
+      setEditingMovie(null);
+      window.location.reload();
+    } catch (error) {
+      console.error("Hálózati hiba:", error);
+    }
+  };
+  
+
+GET1:
+
+const fetchMovieRating = async (movieId) => {
+  try {
+    const response = await fetch(`http://localhost:5297/Film/Rating?id=${movieId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
 
 APP js
 
@@ -424,6 +812,235 @@ export const ChessSinglePage =()=> {
 
 Back:
 
+Program.cs:
+
+
+using static Org.BouncyCastle.Crypto.Engines.SM2Engine;
+using System.Security.Policy;
+
+namespace KerényRóbertBackEnd
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+            builder.Services.AddCors(c => { c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()); });
+
+            builder.Services.AddControllers();
+            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            var app = builder.Build();
+
+            app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+
+            app.UseAuthorization();
+
+
+            app.MapControllers();
+
+            app.Run();
+        }
+    }
+}
+//Scaffold-DbContext "SERVER=localhost;PORT=3306;DATABASE=turistadb;USER=root;PASSWORD=;SSL MODE = none; " mysql.entityframeworkcore -outputdir Models -f
+
+
+
+
+Controller:
+
+GET
+
+using KerényRóbertBackEnd.DTOs;
+using KerényRóbertBackEnd.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
+
+namespace KerényRóbertBackEnd.Controllers
+{
+    [Route("[controller]")]
+    [ApiController]
+    public class TuraController : ControllerBase
+    {
+        [HttpGet("All")]
+
+        public IActionResult GetAll()
+        {
+            try
+            {
+                using (var cx = new TuristadbContext())
+                {
+                    return Ok(cx.Turas.Include(f => f.Turavezeto).Include(f => f.Utvonal.Nehezseg).ToList());
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+Módosít/Delete
+
+
+using KerényRóbertBackEnd.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace KerényRóbertBackEnd.Controllers
+{
+    [Route("[controller]")]
+    [ApiController]
+    public class TuravezetoController : ControllerBase
+    {
+        [HttpPut("modosit")]
+
+        public async Task<IActionResult> Put(Turavezeto turavezeto)
+        {
+            try
+            {
+                using (var cx = new TuristadbContext())
+                {
+                    cx.Turavezetos.Update(turavezeto);
+                    await cx.SaveChangesAsync();
+                    return Ok("Sikeres módosítás.");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.InnerException == null)
+                {
+                    return NotFound("Nem azonosítható túravezető.");
+                }
+
+                {
+                    return BadRequest(ex.InnerException.Message);
+                }
+            }
+        }
+
+        [HttpDelete("torol/{id}")]
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                using (var cx = new TuristadbContext())
+                {
+                    cx.Turavezetos.Remove(new Turavezeto { Id = id });
+                    await cx.SaveChangesAsync();
+                    return Ok("Sikeres törlés.");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.InnerException != null)
+                {
+                    return BadRequest(ex.InnerException.Message);
+
+                }
+                return NotFound("Nem azonosítható túravezető.");
+            }
+        }
+    }
+}
+POST:
+
+using KerényRóbertBackEnd.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace KerényRóbertBackEnd.Controllers
+{
+    [Route("[controller]")]
+    [ApiController]
+    public class UtvonalController : ControllerBase
+    {
+        [HttpPost("uj")]
+
+        public async Task<IActionResult> Post(Utvonal utvonal)
+        {
+            try
+            {
+                using (var cx=new TuristadbContext())
+                {
+                    cx.Utvonals.Add(utvonal);
+                    await cx.SaveChangesAsync();
+                    return Ok("Sikeres mentés.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+    }
+}
+
+
+DTO:
+namespace KerényRóbertBackEnd.DTOs
+{
+    public class TuraAdatok
+    {
+        public int Id { get; set; }
+
+        public DateTime Idopont { get; set; }
+
+        public string Vezeto { get; set; }
+
+        public int Koltseg { get; set; }
+    }
+}
+
+
+Models:
+
+using System;
+using System.Collections.Generic;
+
+namespace KerényRóbertBackEnd.Models;
+
+public partial class Tura
+{
+    public int Id { get; set; }
+
+    public DateTime Idopont { get; set; }
+
+    public int UtvonalId { get; set; }
+
+    public int TuravezetoId { get; set; }
+
+    public int Koltseg { get; set; }
+
+    public int Maxletszam { get; set; }
+
+    public virtual Turavezeto Turavezeto { get; set; } = null!;
+
+    public virtual Utvonal Utvonal { get; set; } = null!;
+}
+
+
+
+
+
+
 Asztali:
 
 CLI:
@@ -740,3 +1357,10 @@ namespace celloveszetWPF
 
     }
 }
+
+
+
+
+
+
+
