@@ -1,0 +1,88 @@
+
+GLS_CLI - Konzolos projekt megoldási útmutató MINTA MEGOLDÁSOKKAL
+
+1. FELADAT: Projekt és osztály létrehozása
+------------------------------------------
+AutoAdatok.cs:
+
+public class AutoAdatok
+{
+    public DateTime Datum { get; }
+    public string SoforNev { get; }
+    public int NapiKm { get; }
+    public int CsomagokSzama { get; }
+    public int Fogyasztas { get; }
+
+    public AutoAdatok(string sor)
+    {
+        var mezok = sor.Split(';');
+        Datum = DateTime.Parse(mezok[0]);
+        SoforNev = mezok[1];
+        NapiKm = int.Parse(mezok[2]);
+        CsomagokSzama = int.Parse(mezok[3]);
+        Fogyasztas = int.Parse(mezok[4]);
+    }
+}
+
+2. FELADAT: Adatok beolvasása
+-----------------------------
+List<AutoAdatok> adatok = File.ReadAllLines("GLS.txt")
+    .Select(sor => new AutoAdatok(sor))
+    .ToList();
+
+Console.WriteLine($"Az autó használatban töltött napjainak száma: {adatok.Count}");
+
+3. FELADAT: Különböző sofőrök száma
+-----------------------------------
+var kulonbozoSoforok = adatok.Select(a => a.SoforNev).Distinct().Count();
+Console.WriteLine($"Különböző sofőrök száma: {kulonbozoSoforok}");
+
+4. FELADAT: Összes megtett km
+-----------------------------
+int osszesKm = adatok.Sum(a => a.NapiKm);
+Console.WriteLine($"Az összes megtett kilométer: {osszesKm} km");
+
+5. FELADAT: Függvény az átlagos fogyasztáshoz
+---------------------------------------------
+public static double AtlagFogyasztasSzamitas(int osszFogyasztas, int osszKm)
+{
+    if (osszKm <= 0 || osszFogyasztas < 0) return 0;
+    return (double)osszFogyasztas / (osszKm / 100.0);
+}
+
+6. FELADAT: Átlagos fogyasztás kiszámítása
+------------------------------------------
+int osszFogy = adatok.Sum(a => a.Fogyasztas);
+double atlagFogyasztas = AtlagFogyasztasSzamitas(osszFogy, osszesKm);
+Console.WriteLine($"Átlagos fogyasztás: {atlagFogyasztas:F2} liter/100 km");
+
+7. FELADAT: Legtöbbet vezető sofőr
+----------------------------------
+var legtobb = adatok
+    .GroupBy(a => a.SoforNev)
+    .Select(g => new { Nev = g.Key, Napok = g.Count() })
+    .OrderByDescending(x => x.Napok)
+    .First();
+
+Console.WriteLine($"A legtöbbet vezető sofőr: {legtobb.Nev}, napok száma: {legtobb.Napok}");
+
+8. FELADAT: Unit tesztek (xUnit példa)
+--------------------------------------
+public class TesztFogyasztas
+{
+    [Theory]
+    [InlineData(10, 100, 10)]
+    [InlineData(16, 200, 8)]
+    [InlineData(0, 0, 0)]
+    public void AtlagFogyasztasTeszt(int fogyasztas, int km, double elvart)
+    {
+        double eredmeny = Program.AtlagFogyasztasSzamitas(fogyasztas, km);
+        Assert.Equal(elvart, eredmeny, 2);  // 2 tizedesjegy pontosság
+    }
+}
+
+Fájlkezelés:
+------------
+A GLS.txt fájlt helyezd a bin/Debug/netX.X mappába, vagy állítsd be úgy a projektben, hogy másolódjon a kimeneti könyvtárba ("Copy if newer").
+
+Vége.
